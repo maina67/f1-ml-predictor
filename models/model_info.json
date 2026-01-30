@@ -1,0 +1,23 @@
+{
+  "feature_columns": [
+    "GridPosition",
+    "QualiPosition",
+    "Driver_encoded",
+    "Team_encoded",
+    "Circuit_encoded",
+    "Driver_Avg_Position_Last5",
+    "Driver_Avg_Position_Last3",
+    "Team_Avg_Position_Last5",
+    "Driver_Finish_Rate",
+    "Driver_Circuit_Avg",
+    "Team_Circuit_Avg",
+    "Quali_Grid_Diff",
+    "Quali_vs_Teammate",
+    "Race_Number_In_Season",
+    "Driver_Race_Count",
+    "Team_Championship_Points"
+  ],
+  "model_name": "Gradient Boosting",
+  "test_mae": 3.0607118205651815,
+  "test_r2": 0.4649682466264151
+}
