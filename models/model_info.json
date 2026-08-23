@@ -17,7 +17,46 @@
     "Driver_Race_Count",
     "Team_Championship_Points"
   ],
+  "gbm_model": {
+    "name": "Gradient Boosting",
+    "file": "f1_best_model.pkl",
+    "test_mae": 3.210902260906593,
+    "test_r2": 0.41636770905783804
+  },
+  "nn_model": {
+    "name": "Neural Network",
+    "file": "f1_neural_network.keras",
+    "test_mae": 3.1973909466162973,
+    "test_r2": 0.3181827362716856
+  },
+  "ensemble": {
+    "name": "Ensemble (GBM + NN)",
+    "test_mae": 3.103505985013185,
+    "test_r2": 0.4083151711866163
+  },
+  "best_model": "Ensemble",
+  "scaler_file": "f1_scaler.pkl",
+  "sprint_model": {
+    "sprint_feature_columns": [
+      "ShootoutPosition",
+      "SprintGrid",
+      "Driver_encoded",
+      "Team_encoded",
+      "Circuit_encoded",
+      "Driver_Sprint_Avg_Last3",
+      "Team_Sprint_Avg_Last3",
+      "MainRace_Avg_Last5",
+      "SprintPaceDelta",
+      "Team_Championship_Points"
+    ],
+    "test_mae": 2.700126373921869,
+    "test_r2": 0.6323975688661696,
+    "model": "Gradient Boosting"
+  },
+  "last_updated": "2026-08-23 13:45",
+  "last_round": 2,
+  "last_year": 2026,
   "model_name": "Gradient Boosting",
-  "test_mae": 3.0607118205651815,
-  "test_r2": 0.4649682466264151
+  "test_mae": 3.194748604191847,
+  "test_r2": 0.40902090690317583
 }
