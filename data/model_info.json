@@ -20,8 +20,8 @@
   "gbm_model": {
     "name": "Gradient Boosting",
     "file": "f1_best_model.pkl",
-    "test_mae": 3.210902260906593,
-    "test_r2": 0.41636770905783804
+    "test_mae": 3.0068004632050624,
+    "test_r2": 0.5550814980393217
   },
   "nn_model": {
     "name": "Neural Network",
@@ -53,9 +53,9 @@
     "test_r2": 0.6323975688661696,
     "model": "Gradient Boosting"
   },
-  "last_updated": "2026-08-23 13:45",
-  "last_round": 2,
-  "last_year": 2026,
+  "last_updated": "2026-08-23 15:56",
+  "last_round": null,
+  "last_year": null,
   "model_name": "Gradient Boosting",
   "test_mae": 3.194748604191847,
   "test_r2": 0.40902090690317583
