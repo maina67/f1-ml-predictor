@@ -59,6 +59,13 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
     position: fixed; inset: 0; background: #04040a;
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; z-index: 99999; gap: 48px;
+    animation: introFadeOut 0.7s ease 3.8s forwards;
+    pointer-events: none;
+}
+@keyframes introFadeOut {
+    0% { opacity: 1; visibility: visible; }
+    90% { opacity: 0.05; visibility: visible; }
+    100% { opacity: 0; visibility: hidden; pointer-events: none; display: none; }
 }
 .intro-title {
     font-family: 'Barlow Condensed', sans-serif;
@@ -78,18 +85,26 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
     border: 3px solid #222; box-shadow: inset 0 0 12px rgba(0,0,0,0.8);
     transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.light-pod.red {
-    background: #cc0000; border-color: #ff2020;
-    box-shadow: 0 0 18px 6px rgba(220,0,0,0.7), 0 0 40px 12px rgba(180,0,0,0.4),
-                inset 0 0 20px rgba(255,80,80,0.4);
+.light-pod.pod-1 { animation: turnRed 0.1s ease 0.6s forwards, turnGo 0.2s ease 3.0s forwards; }
+.light-pod.pod-2 { animation: turnRed 0.1s ease 1.1s forwards, turnGo 0.2s ease 3.0s forwards; }
+.light-pod.pod-3 { animation: turnRed 0.1s ease 1.6s forwards, turnGo 0.2s ease 3.0s forwards; }
+.light-pod.pod-4 { animation: turnRed 0.1s ease 2.1s forwards, turnGo 0.2s ease 3.0s forwards; }
+.light-pod.pod-5 { animation: turnRed 0.1s ease 2.6s forwards, turnGo 0.2s ease 3.0s forwards; }
+
+@keyframes turnRed {
+    to {
+        background: #cc0000; border-color: #ff2020;
+        box-shadow: 0 0 18px 6px rgba(220,0,0,0.7), 0 0 40px 12px rgba(180,0,0,0.4),
+                    inset 0 0 20px rgba(255,80,80,0.4);
+    }
 }
-.light-pod.go {
-    background: #003300; border-color: #00cc44;
-    box-shadow: 0 0 18px 6px rgba(0,200,60,0.7), 0 0 40px 12px rgba(0,160,40,0.4),
-                inset 0 0 20px rgba(40,255,100,0.3);
-    animation: greenPulse 0.4s ease;
+@keyframes turnGo {
+    to {
+        background: #003300; border-color: #00cc44;
+        box-shadow: 0 0 18px 6px rgba(0,200,60,0.7), 0 0 40px 12px rgba(0,160,40,0.4),
+                    inset 0 0 20px rgba(40,255,100,0.3);
+    }
 }
-@keyframes greenPulse { 0% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes fadeSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 
 /* ── Sidebar ── */
@@ -256,43 +271,45 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
 
 
 # ============================================================================
-# F1 LIGHTS-OUT INTRO
+# F1 LIGHTS-OUT INTRO (Non-blocking CSS Animation)
 # ============================================================================
 
-def run_lights_out_intro():
-    intro = st.empty()
-
-    def render(states, go=False):
-        lights_html = ""
-        for s in states:
-            cls = "go" if go and s else ("red" if s else "")
-            lights_html += f'<div class="light-pod {cls}"></div>'
-        intro.markdown(f"""
+def render_lights_out_intro():
+    if "intro_shown" not in st.session_state:
+        st.session_state.intro_shown = True
+        st.markdown("""
         <div id="f1-intro">
             <div class="intro-title">F1 <span style="color:#e10600">Race</span> Predictor</div>
             <div class="intro-sub">Powered by Machine Learning</div>
-            <div class="lights-row">{lights_html}</div>
+            <div class="lights-row">
+                <div class="light-pod pod-1"></div>
+                <div class="light-pod pod-2"></div>
+                <div class="light-pod pod-3"></div>
+                <div class="light-pod pod-4"></div>
+                <div class="light-pod pod-5"></div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-    render([False, False, False, False, False])
-    time.sleep(0.8)
-    for i in range(1, 6):
-        render([j < i for j in range(5)])
-        time.sleep(0.75)
-    time.sleep(1.4)
-    render([True, True, True, True, True], go=True)
-    time.sleep(0.7)
-    intro.empty()
+render_lights_out_intro()
 
 
-if "intro_done" not in st.session_state:
-    st.session_state.intro_done = False
+# ============================================================================
+# COMPATIBILITY HELPERS FOR STREAMLIT 1.28 - 1.62+
+# ============================================================================
 
-if not st.session_state.intro_done:
-    run_lights_out_intro()
-    st.session_state.intro_done = True
-    st.rerun()
+def render_dataframe(df, **kwargs):
+    try:
+        st.dataframe(df, width="stretch", **kwargs)
+    except TypeError:
+        st.dataframe(df, use_container_width=True, **kwargs)
+
+
+def render_chart(fig, **kwargs):
+    try:
+        st.plotly_chart(fig, width="stretch", **kwargs)
+    except TypeError:
+        st.plotly_chart(fig, use_container_width=True, **kwargs)
 
 
 # ============================================================================
@@ -303,7 +320,11 @@ def safe_load_gbm(data_dir, feature_columns, df):
     gbm_path = os.path.join(data_dir, "f1_best_model.pkl")
     if os.path.exists(gbm_path):
         try:
-            return joblib.load(gbm_path)
+            model = joblib.load(gbm_path)
+            # Validate model predict
+            test_df = df[feature_columns].head(2)
+            model.predict(test_df)
+            return model
         except Exception:
             pass
 
@@ -328,7 +349,11 @@ def safe_load_gbm(data_dir, feature_columns, df):
 def safe_load_scaler(scaler_path, feature_columns, df):
     if os.path.exists(scaler_path):
         try:
-            return joblib.load(scaler_path)
+            scaler = joblib.load(scaler_path)
+            # Validate transform
+            test_x = df[feature_columns].head(2).values
+            scaler.transform(test_x)
+            return scaler
         except Exception:
             pass
 
@@ -351,7 +376,11 @@ def safe_load_sprint(data_dir, sprint_cols, sprint_df):
     sprint_path = os.path.join(data_dir, "f1_sprint_model.pkl")
     if os.path.exists(sprint_path):
         try:
-            return joblib.load(sprint_path)
+            model = joblib.load(sprint_path)
+            if sprint_cols and sprint_df is not None:
+                test_df = sprint_df[sprint_cols].head(2)
+                model.predict(test_df)
+            return model
         except Exception:
             pass
 
@@ -828,7 +857,7 @@ with tab_predict:
                 display_cols = ["Rank", "Driver", "Team", "Grid", "Predicted"]
                 if nn_available:
                     display_cols += ["GBM_Pred", "NN_Pred"]
-                st.dataframe(results[display_cols], use_container_width=True, hide_index=True)
+                render_dataframe(results[display_cols], hide_index=True)
 
                 fig = go.Figure()
                 fig.add_trace(go.Bar(
@@ -847,7 +876,7 @@ with tab_predict:
                     yaxis=dict(gridcolor="#1e1e2e", title="Position", autorange="reversed"),
                     height=420, margin=dict(t=50, b=20, l=10, r=10),
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                render_chart(fig)
 
                 csv = results.to_csv(index=False)
                 st.download_button("📥 Download CSV", data=csv,
@@ -940,9 +969,9 @@ with tab_sprint:
                 s_results["Est. Points"] = s_results["Rank"].map(lambda r: sprint_pts.get(r, 0))
 
                 st.markdown('<div class="section-head" style="margin-top:20px;">Full Classification</div>', unsafe_allow_html=True)
-                st.dataframe(
+                render_dataframe(
                     s_results[["Rank","Driver","Team","Grid","Predicted","Est. Points"]],
-                    use_container_width=True, hide_index=True,
+                    hide_index=True,
                 )
 
                 fig_s = go.Figure()
@@ -962,7 +991,7 @@ with tab_sprint:
                     yaxis=dict(gridcolor="#1e1e2e", title="Position", autorange="reversed"),
                     height=400, margin=dict(t=50, b=20, l=10, r=10),
                 )
-                st.plotly_chart(fig_s, use_container_width=True)
+                render_chart(fig_s)
 
                 csv = s_results.to_csv(index=False)
                 st.download_button("📥 Download Sprint CSV", data=csv,
@@ -1030,7 +1059,7 @@ with tab_analysis:
                 yaxis=dict(gridcolor="#1e1e2e"),
                 height=380, margin=dict(t=10, b=10, l=10, r=60),
             )
-            st.plotly_chart(fig_imp, use_container_width=True)
+            render_chart(fig_imp)
 
     with col_data:
         st.markdown('<div class="section-head">Training Data by Year</div>', unsafe_allow_html=True)
@@ -1051,8 +1080,8 @@ with tab_analysis:
             yaxis=dict(gridcolor="#1e1e2e", title="Races"),
             height=200, margin=dict(t=10, b=10, l=10, r=10),
         )
-        st.plotly_chart(fig_yr, use_container_width=True)
-        st.dataframe(year_summary, use_container_width=True, hide_index=True)
+        render_chart(fig_yr)
+        render_dataframe(year_summary, hide_index=True)
 
     st.markdown('<div class="stripe"></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-head">What Does MAE Mean in F1?</div>', unsafe_allow_html=True)
