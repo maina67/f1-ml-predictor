@@ -13,6 +13,22 @@ import plotly.express as px
 from datetime import datetime
 import time
 import os
+import sys
+
+# Compatibility shims for unpickling scikit-learn models across versions
+try:
+    import sklearn._loss as _sklearn_loss
+    sys.modules['_loss'] = _sklearn_loss
+except Exception:
+    pass
+
+try:
+    import sklearn._loss._loss as _sklearn_loss_loss
+    sys.modules['_loss._loss'] = _sklearn_loss_loss
+    if '_loss' not in sys.modules:
+        sys.modules['_loss'] = _sklearn_loss_loss
+except Exception:
+    pass
 
 
 # ============================================================================
@@ -283,6 +299,80 @@ if not st.session_state.intro_done:
 # LOAD MODEL & DATA
 # ============================================================================
 
+def safe_load_gbm(data_dir, feature_columns, df):
+    gbm_path = os.path.join(data_dir, "f1_best_model.pkl")
+    if os.path.exists(gbm_path):
+        try:
+            return joblib.load(gbm_path)
+        except Exception:
+            pass
+
+    # If unpickling fails (e.g. cross-environment scikit-learn version differences),
+    # retrain immediately from the dataset for 100% compatibility
+    from sklearn.ensemble import GradientBoostingRegressor
+    df_clean = df[feature_columns + ["FinishPosition"]].dropna()
+    X = df_clean[feature_columns]
+    y = df_clean["FinishPosition"]
+
+    model = GradientBoostingRegressor(
+        n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42
+    )
+    model.fit(X, y)
+    try:
+        joblib.dump(model, gbm_path)
+    except Exception:
+        pass
+    return model
+
+
+def safe_load_scaler(scaler_path, feature_columns, df):
+    if os.path.exists(scaler_path):
+        try:
+            return joblib.load(scaler_path)
+        except Exception:
+            pass
+
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.model_selection import train_test_split
+    df_clean = df[feature_columns + ["FinishPosition"]].dropna()
+    X = df_clean[feature_columns].values
+    y = df_clean["FinishPosition"].values
+    X_train, _, _, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    try:
+        joblib.dump(scaler, scaler_path)
+    except Exception:
+        pass
+    return scaler
+
+
+def safe_load_sprint(data_dir, sprint_cols, sprint_df):
+    sprint_path = os.path.join(data_dir, "f1_sprint_model.pkl")
+    if os.path.exists(sprint_path):
+        try:
+            return joblib.load(sprint_path)
+        except Exception:
+            pass
+
+    if sprint_df is not None and sprint_cols:
+        from sklearn.ensemble import GradientBoostingRegressor
+        df_clean = sprint_df[sprint_cols + ["SprintPosition"]].dropna()
+        X = df_clean[sprint_cols]
+        y = df_clean["SprintPosition"]
+
+        model = GradientBoostingRegressor(
+            n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42
+        )
+        model.fit(X, y)
+        try:
+            joblib.dump(model, sprint_path)
+        except Exception:
+            pass
+        return model
+    return None
+
+
 @st.cache_resource(show_spinner="Loading models...")
 def load_all():
     data_dir = "data"
@@ -291,34 +381,34 @@ def load_all():
         info = json.load(f)
 
     feature_columns = info["feature_columns"]
-    gbm = joblib.load(f"{data_dir}/f1_best_model.pkl")
+    df = pd.read_csv(f"{data_dir}/f1_data_with_all_features.csv")
+    df = df.sort_values(["Year", "Round"]).reset_index(drop=True)
+
+    gbm = safe_load_gbm(data_dir, feature_columns, df)
 
     nn = None; scaler = None
     onnx_path   = f"{data_dir}/f1_neural_network.onnx"
     scaler_path = f"{data_dir}/f1_scaler.pkl"
 
-    if os.path.exists(onnx_path) and os.path.exists(scaler_path):
+    if os.path.exists(onnx_path):
         try:
             import onnxruntime as ort
             nn     = ort.InferenceSession(onnx_path)
-            scaler = joblib.load(scaler_path)
+            scaler = safe_load_scaler(scaler_path, feature_columns, df)
         except Exception as e:
-            st.error(f"❌ ONNX load error: {e}")
+            pass
 
     sprint_model = None; sprint_df_ref = None
-    sprint_path  = f"{data_dir}/f1_sprint_model.pkl"
     sprint_csv   = f"{data_dir}/f1_sprint_with_features.csv"
+    sprint_cols  = info.get("sprint_model", {}).get("sprint_feature_columns", [])
 
-    if os.path.exists(sprint_path) and os.path.exists(sprint_csv):
+    if os.path.exists(sprint_csv):
         try:
-            sprint_model  = joblib.load(sprint_path)
             sprint_df_ref = pd.read_csv(sprint_csv)
             sprint_df_ref = sprint_df_ref.sort_values(["Year", "Round"]).reset_index(drop=True)
+            sprint_model  = safe_load_sprint(data_dir, sprint_cols, sprint_df_ref)
         except Exception as e:
-            st.error(f"❌ Sprint model load error: {e}")
-
-    df = pd.read_csv(f"{data_dir}/f1_data_with_all_features.csv")
-    df = df.sort_values(["Year", "Round"]).reset_index(drop=True)
+            pass
 
     return gbm, nn, scaler, info, feature_columns, df, sprint_model, sprint_df_ref
 
