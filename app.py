@@ -58,14 +58,7 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
 #f1-intro {
     position: fixed; inset: 0; background: #04040a;
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; z-index: 99999; gap: 48px;
-    animation: introFadeOut 0.7s ease 3.8s forwards;
-    pointer-events: none;
-}
-@keyframes introFadeOut {
-    0% { opacity: 1; visibility: visible; }
-    90% { opacity: 0.05; visibility: visible; }
-    100% { opacity: 0; visibility: hidden; pointer-events: none; display: none; }
+    justify-content: center; z-index: 999999; gap: 48px;
 }
 .intro-title {
     font-family: 'Barlow Condensed', sans-serif;
@@ -85,26 +78,18 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
     border: 3px solid #222; box-shadow: inset 0 0 12px rgba(0,0,0,0.8);
     transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.light-pod.pod-1 { animation: turnRed 0.1s ease 0.6s forwards, turnGo 0.2s ease 3.0s forwards; }
-.light-pod.pod-2 { animation: turnRed 0.1s ease 1.1s forwards, turnGo 0.2s ease 3.0s forwards; }
-.light-pod.pod-3 { animation: turnRed 0.1s ease 1.6s forwards, turnGo 0.2s ease 3.0s forwards; }
-.light-pod.pod-4 { animation: turnRed 0.1s ease 2.1s forwards, turnGo 0.2s ease 3.0s forwards; }
-.light-pod.pod-5 { animation: turnRed 0.1s ease 2.6s forwards, turnGo 0.2s ease 3.0s forwards; }
-
-@keyframes turnRed {
-    to {
-        background: #cc0000; border-color: #ff2020;
-        box-shadow: 0 0 18px 6px rgba(220,0,0,0.7), 0 0 40px 12px rgba(180,0,0,0.4),
-                    inset 0 0 20px rgba(255,80,80,0.4);
-    }
+.light-pod.red {
+    background: #cc0000; border-color: #ff2020;
+    box-shadow: 0 0 18px 6px rgba(220,0,0,0.7), 0 0 40px 12px rgba(180,0,0,0.4),
+                inset 0 0 20px rgba(255,80,80,0.4);
 }
-@keyframes turnGo {
-    to {
-        background: #003300; border-color: #00cc44;
-        box-shadow: 0 0 18px 6px rgba(0,200,60,0.7), 0 0 40px 12px rgba(0,160,40,0.4),
-                    inset 0 0 20px rgba(40,255,100,0.3);
-    }
+.light-pod.go {
+    background: #003300; border-color: #00cc44;
+    box-shadow: 0 0 18px 6px rgba(0,200,60,0.7), 0 0 40px 12px rgba(0,160,40,0.4),
+                inset 0 0 20px rgba(40,255,100,0.3);
+    animation: greenPulse 0.4s ease;
 }
+@keyframes greenPulse { 0% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes fadeSlideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 
 /* ── Sidebar ── */
@@ -271,27 +256,51 @@ html, body, [class*="css"] { font-family: 'Barlow', sans-serif; }
 
 
 # ============================================================================
-# F1 LIGHTS-OUT INTRO (Non-blocking CSS Animation)
+# F1 LIGHTS-OUT INTRO
 # ============================================================================
 
-def render_lights_out_intro():
-    if "intro_shown" not in st.session_state:
-        st.session_state.intro_shown = True
-        st.markdown("""
+def run_lights_out_intro():
+    intro = st.empty()
+
+    def render(states, go=False):
+        lights_html = ""
+        for s in states:
+            cls = "go" if go and s else ("red" if s else "")
+            lights_html += f'<div class="light-pod {cls}"></div>'
+        intro.markdown(f"""
         <div id="f1-intro">
             <div class="intro-title">F1 <span style="color:#e10600">Race</span> Predictor</div>
             <div class="intro-sub">Powered by Machine Learning</div>
-            <div class="lights-row">
-                <div class="light-pod pod-1"></div>
-                <div class="light-pod pod-2"></div>
-                <div class="light-pod pod-3"></div>
-                <div class="light-pod pod-4"></div>
-                <div class="light-pod pod-5"></div>
-            </div>
+            <div class="lights-row">{lights_html}</div>
         </div>
         """, unsafe_allow_html=True)
 
-render_lights_out_intro()
+    render([False, False, False, False, False])
+    time.sleep(0.8)
+    for i in range(1, 6):
+        render([j < i for j in range(5)])
+        time.sleep(0.75)
+    time.sleep(1.4)
+    render([True, True, True, True, True], go=True)
+    time.sleep(0.7)
+    intro.empty()
+
+
+if "intro_done" not in st.session_state:
+    st.session_state.intro_done = False
+
+if not st.session_state.intro_done:
+    # Completely hide sidebar and header during the intro animation
+    st.markdown("""
+    <style>
+    [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], header {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    run_lights_out_intro()
+    st.session_state.intro_done = True
+    st.rerun()
 
 
 # ============================================================================
